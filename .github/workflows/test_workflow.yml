@@ -43,7 +43,9 @@ jobs:
       shell: bash
 
     - name: Compile Fortran Code
-      run: make nhmg Work/
+      run: |
+            cd Work/
+	    make nhmg
       shell: bash
 
     - name: Run Tests
