@@ -29,6 +29,10 @@ jobs:
       run: conda env create -f ci/environment.yml
       shell: bash
 
+    - name: Initialize Conda
+      run: conda init bash
+      shell: bash
+
     - name: Activate Conda Environment
       run: conda activate roms-ci
 
