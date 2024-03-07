@@ -12,6 +12,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      MY_VARIABLE: "my_value"
+      ANOTHER_VARIABLE: "another_value"    
     
     steps:
     - name: Checkout Repository
@@ -39,9 +42,16 @@ jobs:
         conda activate roms-ci
 
     - name: Set Environment Variables
-      run: source ci/set_environs.sh
+      run: |
+        #source ci/set_environs.sh
+        echo "export ROMS_ROOT=." >> $GITHUB_ENV
+        echo "export MPIHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
+        echo "export NETCDFHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
+        echo "export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NETCDFHOME/lib"" >> $GITHUB_ENV
+        echo "export PATH="./:$PATH"" >> $GITHUB_ENV
+	echo "export PATH=$PATH:$ROMS_ROOT/Tools-Roms" >> $GITHUB_ENV
       shell: bash
-
+      
     - name: Compile Fortran Code
       run: |
         cd Work/
