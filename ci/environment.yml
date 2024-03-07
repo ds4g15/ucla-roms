@@ -1,0 +1,8 @@
+name: roms-ci
+channels:
+  - conda-forge
+dependencies:
+  - compilers
+  - netcdf-fortran
+  # - nco
+  # - ncview
