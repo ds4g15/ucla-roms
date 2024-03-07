@@ -47,13 +47,13 @@ jobs:
         echo "export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NETCDFHOME/lib"" >> $GITHUB_ENV
         echo "export PATH="./:$PATH"" >> $GITHUB_ENV
         echo "export PATH=$PATH:$ROMS_ROOT/Tools-Roms" >> $GITHUB_ENV
-	echo $GITHUB_ENV
+        echo $GITHUB_ENV
       shell: bash
       
     - name: Compile Fortran Code
       run: |
         cd Work/
-	echo $GITHUB_ENV
+        echo $GITHUB_ENV
         make nhmg
       shell: bash
 
