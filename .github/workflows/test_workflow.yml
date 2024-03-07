@@ -37,10 +37,12 @@ jobs:
       run: |
         source $HOME/.bashrc
         conda activate roms-ci
+        echo "The Conda prefix is ${CONDA_PREFIX}"
 
     - name: Set Environment Variables
       run: |
         #source ci/set_environs.sh
+        echo "The Conda prefix is ${CONDA_PREFIX}"
         echo "export ROMS_ROOT=." >> $GITHUB_ENV
         echo "export MPIHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
         echo "export NETCDFHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
