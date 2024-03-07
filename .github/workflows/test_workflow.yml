@@ -1,0 +1,44 @@
+name: Automated Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      with:
+        repository: https://github.com/dafyddstephenson/ucla-roms.git
+        ref: main
+
+    - name: Set up Conda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        environment-file: ci/environment.yml
+
+    - name: Create Conda Environment
+      run: conda env create -f ci/environment.yml
+      shell: bash
+
+    - name: Activate Conda Environment
+      run: conda activate roms-ci
+
+    - name: Set Environment Variables
+      run: source ci/set_environs.sh
+      shell: bash
+
+    - name: Compile Fortran Code
+      run: make nhmg Work/
+      shell: bash
+
+    - name: Run Tests
+      run: bash Examples/code_check/do_test_all.sh
+      shell: bash
