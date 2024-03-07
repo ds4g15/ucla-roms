@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - roms-testing
   pull_request:
     branches:
       - '*'
