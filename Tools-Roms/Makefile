@@ -51,6 +51,7 @@ nc3to4z: nc3to4z.o lenstr.o read_string.o
 	
 mpc: mpc.F Makefile
 	$(CPP) $(CPPFLAGS) -P mpc.F > ./mpc.fpp #20231013
+	ls
 	$(CFT) $(FFLAGS) $(LDFLAGS) -o mpc ./mpc.fpp #20231013
 	
 extract_data_join: ncjoin_mod.o extract_data_join.o  lenstr.o
