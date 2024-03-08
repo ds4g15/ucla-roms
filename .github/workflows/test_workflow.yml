@@ -63,8 +63,8 @@ jobs:
         conda activate roms-ci            	
         cd Work/
         make nhmg
-	cd ${ROMS_ROOT}/Tools-Roms/
-	make
+        cd ${ROMS_ROOT}/Tools-Roms/
+        make
       shell: bash
 
     - name: Run Tests
