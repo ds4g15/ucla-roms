@@ -64,7 +64,7 @@ jobs:
         cd Work/
         make nhmg
         cd ${ROMS_ROOT}/Tools-Roms/
-        make
+        make mpc
       shell: bash
 
     - name: Run Tests
