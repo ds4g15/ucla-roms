@@ -100,7 +100,7 @@
 
 # Options to link to libraries & modules (NetCDF, etc):
 	#LCDF = $(NHMG_LIB) $(NETCDFF_LIB) $(NETCDFC_LIB) $(NETCDFF_INC) $(NETCDFC_INC)
-	LCDF = -lmpi -lnetcdf -lnetcdff -L$(MPIHOME)/lib -L$(NETCDFHOME)lib -I$(MPIHOME)/include -I$(NETCDFHOME)/include
+	LCDF = -lmpi -lnetcdf -lnetcdff -L$(MPIHOME)/lib -L$(NETCDFHOME)/lib -I$(MPIHOME)/include -I$(NETCDFHOME)/include
 
 # -------------------------------------------------------------
 
