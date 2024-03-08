@@ -47,12 +47,12 @@ jobs:
         #source ci/set_environs.sh
         echo "The Conda prefix is ${CONDA_PREFIX}"
         conda info
-        echo "export ROMS_ROOT=$(pwd)" >> $GITHUB_ENV
-        echo "export MPIHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
-        echo "export NETCDFHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
-        echo "export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NETCDFHOME/lib"" >> $GITHUB_ENV
-        echo "export PATH="./:$PATH"" >> $GITHUB_ENV
-        echo "export PATH=$PATH:$ROMS_ROOT/Tools-Roms" >> $GITHUB_ENV
+        echo "ROMS_ROOT=$(pwd)" >> $GITHUB_ENV
+        echo "MPIHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
+        echo "NETCDFHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NETCDFHOME/lib"" >> $GITHUB_ENV
+        echo "PATH="./:$PATH"" >> $GITHUB_ENV
+        echo "PATH=$PATH:$ROMS_ROOT/Tools-Roms" >> $GITHUB_ENV
         echo "the github env variable is $GITHUB_ENV with contents"
         cat $GITHUB_ENV
       shell: bash
