@@ -53,7 +53,8 @@ jobs:
         echo "export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NETCDFHOME/lib"" >> $GITHUB_ENV
         echo "export PATH="./:$PATH"" >> $GITHUB_ENV
         echo "export PATH=$PATH:$ROMS_ROOT/Tools-Roms" >> $GITHUB_ENV
-        echo $GITHUB_ENV
+        echo "the github env variable is $GITHUB_ENV with contents"
+        cat $GITHUB_ENV
       shell: bash
       
     - name: Compile Fortran Code
