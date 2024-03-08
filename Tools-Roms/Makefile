@@ -3,7 +3,7 @@ include ../src/Makedefs.inc
 # NEED TO OVERRIDE SOME OF MAKEDEFS.INC:
 
 # - Can't use -ip optimization for tools (partit won't compile)
-	FFLAGS = -O3
+	FFLAGS = -O3 -fallow-argument-mismatch
 # - uncomment for debugging:
 #	FFLAGS = -g -traceback -check all -CA -CB -CS
 # - for profiling with grof to see source code, also comment '@/bin/rm -f $*.fpp':

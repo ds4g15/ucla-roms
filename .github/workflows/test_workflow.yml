@@ -44,9 +44,6 @@ jobs:
       run: |
         source $HOME/.bashrc
         conda activate roms-ci      
-        #source ci/set_environs.sh
-        echo "The Conda prefix is ${CONDA_PREFIX}"
-        conda info
         echo "ROMS_ROOT=$(pwd)" >> $GITHUB_ENV
         echo "MPIHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
         echo "NETCDFHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
@@ -65,8 +62,9 @@ jobs:
         source $GITHUB_ENV
         conda activate roms-ci            	
         cd Work/
-        echo "the github env variable is $GITHUB_ENV"
         make nhmg
+	cd ${ROMS_ROOT}/Tools-Roms/
+	make
       shell: bash
 
     - name: Run Tests
