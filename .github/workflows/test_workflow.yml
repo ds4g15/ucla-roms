@@ -43,7 +43,13 @@ jobs:
     - name: Set Environment Variables
       run: |
         source $HOME/.bashrc
-        conda activate roms-ci      
+        conda activate roms-ci
+        ROMS_ROOT=$(pwd)
+        NETCDFHOME=${CONDA_PREFIX}
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NETCDFHOME/lib"
+        PATH="./:$PATH"
+        PATH=$PATH:$ROMS_ROOT/Tools-Roms
+        # Now copy these variables to GITHUB_ENV to source in future steps
         echo "ROMS_ROOT=$(pwd)" >> $GITHUB_ENV
         echo "MPIHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
         echo "NETCDFHOME=${CONDA_PREFIX}" >> $GITHUB_ENV
@@ -64,10 +70,7 @@ jobs:
         cd Work/
         make nhmg
         cd ${ROMS_ROOT}/Tools-Roms/
-        make mpc
-        ls
-        make partit
-        ls
+        make
       shell: bash
 
     - name: Run Tests
