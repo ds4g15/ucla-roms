@@ -4,5 +4,6 @@ channels:
 dependencies:
   - compilers
   - netcdf-fortran
+  - mpich
   - nco
   - ncview
