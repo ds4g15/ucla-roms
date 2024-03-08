@@ -65,6 +65,7 @@ jobs:
         make nhmg
         cd ${ROMS_ROOT}/Tools-Roms/
         make mpc
+	ls
         make
       shell: bash
 
