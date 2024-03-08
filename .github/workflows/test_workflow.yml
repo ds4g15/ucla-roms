@@ -55,6 +55,8 @@ jobs:
         echo "PATH=$PATH:$ROMS_ROOT/Tools-Roms" >> $GITHUB_ENV
         echo "the github env variable is $GITHUB_ENV with contents"
         cat $GITHUB_ENV
+        echo "also the cpp path is"
+        which cpp
       shell: bash
       
     - name: Compile Fortran Code
