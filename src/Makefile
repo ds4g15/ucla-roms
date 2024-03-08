@@ -1,4 +1,4 @@
-# Universal machine independent makefile for ROMS model
+# UnivAersal machine independent makefile for ROMS model
 #========== ======= =========== ======== === ==== =====
 # Set machine dependent definitions and rules.
 
@@ -62,8 +62,8 @@ IOSRC = checkdims.F	insert_node.F\
 #       pp_vmix.F	get_wwave.F	smol_adv.F	get_bsedim.F
 
   SRCS = $(KRNSRC) $(IOSRC)
-   RCS = $(SRCS:.F=.f)
-  OBJS = $(RCS:.f=.o) 
+   RCS = $(SRCS:.F=.fpp)
+  OBJS = $(RCS:.fpp=.o) 
   SBIN = roms
  LROMS = libroms.a
  LROMS2 = 2/$(LROMS)
@@ -71,7 +71,7 @@ IOSRC = checkdims.F	insert_node.F\
  LROMS4 = 2/$(LROMS) 3/$(LROMS) 4/$(LROMS)
 
 # ROMS excutable (This is the first target and hence the default):
-$(SBIN): $(OBJS)
+$(SBIN): mpc $(OBJS)
 	$(LDR) $(FFLAGS) $(LDFLAGS) -o a.out $(OBJS) $(LCDF) $(LMPI)
 	mv a.out $(SBIN)
 
@@ -89,30 +89,35 @@ check_forces: check_forces.o $(SBIN)
 	mv a.out check_forces
 
 # Everything
-all: tools depend $(SBIN)
+all: mpc tools depend $(SBIN)
 
 # A program to test MPI halo exchange routines.
 # - ------- -- ---- --- ---- -------- ---------
 MPI_TEST = mpi_test.F	mpi_setup.F	exchange.F	mpi_exchange4.F\
 							mpi_exchange8WA.F
-MPI_TEST_RCS = $(MPI_TEST:.F=.f)
-MPI_TEST_OBJ = $(MPI_TEST_RCS:.f=.o)
+MPI_TEST_RCS = $(MPI_TEST:.F=.fpp)
+MPI_TEST_OBJ = $(MPI_TEST_RCS:.fpp=.o)
 
 mpi_test: $(MPI_TEST_OBJ)
 	$(LDR) $(FFLAGS) $(LDFLAGS) -o mpi_test $(MPI_TEST_OBJ) $(LCDF) $(LMPI)
 
 # Auxiliary utility programs
 # --------- ------- --------
- TOOLS = cppcheck srcscheck checkkwds redefs
+ TOOLS = mpc cppcheck srcscheck checkkwds redefs
 
 tools: $(TOOLS)
 
     TMP = .
 
-partit_t.f: partit.F
-	$(CPP) -P $(CPPFLAGS) -DTRANSPOSED_MPI_NODE_ORDER partit.F| mpc > partit_t.f
-partit_t: partit_t.f insert_node.o lenstr.o
-	$(CFT) $(FFLAGS) $(LDFLAGS) -o partit_t partit_t.f insert_node.o lenstr.o $(LCDF)
+mpc: mpc.F Makefile
+	$(CPP) $(CPPFLAGS) -P mpc.F > $(TMP)/mpc.fpp
+	$(CFT) $(FFLAGS) $(LDFLAGS) -o mpc $(TMP)/mpc.fpp
+#	/bin/rm -rf $(TMP)/mpc.fpp
+
+partit_t.fpp: partit.F
+	$(CPP) -P $(CPPFLAGS) -DTRANSPOSED_MPI_NODE_ORDER partit.F| mpc > partit_t.fpp
+partit_t: partit_t.fpp insert_node.o lenstr.o
+	$(CFT) $(FFLAGS) $(LDFLAGS) -o partit_t partit_t.fpp insert_node.o lenstr.o $(LCDF)
 
 partit: partit_t partit.o insert_node.o lenstr.o
 	$(CFT) $(FFLAGS) $(LDFLAGS) -o partit partit.o insert_node.o lenstr.o $(LCDF)
@@ -141,8 +146,13 @@ setup_kwds.F: checkkwds read_inp.F
 	./checkkwds
 
 depend:  # Note: cross_matrix no longer used
-	@${ROMS_ROOT}/Tools-Roms/makedepf90 $(SRCS) > Make.depend
+	@echo 'NOT Updating Make.depend (dependency list)'
+	@echo '${SRCS}'
+	#@${ROMS_ROOT}/Tools-Roms/makedepf90 $(SRCS) > Make.depend #20231015 - Not using the default OR a generated dependency list, just copying from Cheyenne where makedepf90 works
 	@echo 'Updated Make.depend (dependency list)'
+
+plotter: plotter.o
+	$(CFT) -o plotter plotter.o $(LIBNCAR)
 
 # Target to create tar file.
 # ------ -- ------ --- -----
@@ -152,7 +162,7 @@ tarfile: clean
 # Cleaning targets
 # -------- -------
 clean:
-	/bin/rm -rf *.f *.o *.a *.s *.mod *.trace *~ $(COMP_FILES)
+	/bin/rm -rf *.fpp *.o *.a *.s *.mod *.trace *~ $(COMP_FILES)
 allclean: clean
 	cd 2; make -f ./Makefile clean; cd ..
 	cd 3; make -f ./Makefile clean; cd ..
