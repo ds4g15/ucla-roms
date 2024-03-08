@@ -58,8 +58,10 @@ jobs:
       
     - name: Compile Fortran Code
       run: |
+        source $HOME/.bashrc
+        conda activate roms-ci            	
         cd Work/
-        echo $GITHUB_ENV
+        echo "the github env variable is $GITHUB_ENV"
         make nhmg
       shell: bash
 
