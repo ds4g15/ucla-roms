@@ -34,8 +34,8 @@
 
 #   The CPP line below needs to have 'spaces' not 'tabs' unlike the rest.
 #    CPP = /lib/cpp -traditional -D__IFC # 20230927
-    CPP = /usr/bin/cpp -traditional -D__IFC
-	CPPFLAGS = -I${MPIHOME}/include -I${NETCDFHOME}/include -I${MARBL_ROOT}/include
+    CPP = ${CONDA_PREFIX}/bin/cpp -traditional -D__IFC
+	CPPFLAGS = -I${MPIHOME}/include -I${NETCDFHOME}/include
 
 #   Since we no longer keep .fpp files after compilation, if you want to still
 #   see the .fpp to confirm what code is left after c-pre-processing (CPPFLAGS
@@ -100,7 +100,7 @@
 
 # Options to link to libraries & modules (NetCDF, etc):
 	#LCDF = $(NHMG_LIB) $(NETCDFF_LIB) $(NETCDFC_LIB) $(NETCDFF_INC) $(NETCDFC_INC)
-	LCDF = -lmpi -lnetcdf -lnetcdff -L$(MPIHOME)/lib -L$(NETCDFHOME)lib -I$(MPIHOME)/include -I$(NETCDFHOME)include	-L${MARBL_ROOT}/lib -lmarbl-gnu-mpi -I${MARBL_ROOT}/include/gnu-mpi
+	LCDF = -lmpi -lnetcdf -lnetcdff -L$(MPIHOME)/lib -L$(NETCDFHOME)lib -I$(MPIHOME)/include -I$(NETCDFHOME)/include
 
 # -------------------------------------------------------------
 
