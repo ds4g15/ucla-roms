@@ -5,12 +5,14 @@
 include ../../src/Makedefs.inc
 
 # Fortran Compiler
-FC = ifort
+#FC = ifort
+FC = gfortran #20230927
 # - for pacific cluster uncomment:
 #FC = mpiifort
 
 # Normal options for the compiler
-FFLAGS =  -O3 -fp-model source $(LCDF)
+#FFLAGS =  -O3 -fp-model source $(LCDF)
+FFLAGS =  -O3 $(LCDF) #20230927
 
 # Debugging options for the compiler
 #FFLAGS =  -g -check -warn

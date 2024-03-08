@@ -2,7 +2,11 @@
 .SUFFIXES:
 
 # Fortran Compiler
-FC = ifort
+#FC = ifort
+FC = mpif90
+CC = mpicc
+CXX = mpicxx
+LD = mpif90 $(MAIN_PROGRAM)
 
 # Normal options for the compiler
 #FFLAGS =  -O3 -fp-model source -I/opt/mpich-3.2/include/
