@@ -60,7 +60,7 @@ jobs:
     - name: Compile Fortran Code
       run: |
         source $HOME/.bashrc
-	source $GITHUB_ENV
+        source $GITHUB_ENV
         conda activate roms-ci            	
         cd Work/
         echo "the github env variable is $GITHUB_ENV"
