@@ -45,7 +45,7 @@ python3 test_roms.py $bm_file
 retval=$?
 #echo $retval
 
-rm test_roms.py
+#rm test_roms.py
 
 # 3) Rename results logs so they can't be mistakenly read by the 
 #    python script even if new simulation doesn't run
