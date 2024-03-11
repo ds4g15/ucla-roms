@@ -143,8 +143,8 @@ setup_kwds.F: checkkwds read_inp.F
 depend:  # Note: cross_matrix no longer used
 	@echo 'Updating Make.depend (dependency list)'
 	@echo '${SRCS}'
-	@/Users/dafyddstephenson/Code/makedepf90/makedepf90 $(SRCS) > Make.depend #20240308 installed an external copy of makedepf90
-	#@${ROMS_ROOT}/Tools-Roms/makedepf90 $(SRCS) > Make.depend #20231015 - Not using the default OR a generated dependency list, just copying from Cheyenne where makedepf90 works
+	#@/Users/dafyddstephenson/Code/makedepf90/makedepf90 $(SRCS) > Make.depend #20240308 installed an external copy of makedepf90
+	@${ROMS_ROOT}/Tools-Roms/makedepf90 $(SRCS) > Make.depend #20231015 - Not using the default OR a generated dependency list, just copying from Cheyenne where makedepf90 works
 	@echo 'Updated Make.depend (dependency list)'
 
 plotter: plotter.o
