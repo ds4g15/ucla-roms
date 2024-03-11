@@ -75,5 +75,10 @@ jobs:
 
     - name: Run Tests
       #run: bash Examples/code_check/do_test_all.sh
-      run: ${ROMS_ROOT}/Examples/Flux_frc/code_check/do_test_roms.sh laptop
+      run: |
+      source $HOME/.bashrc
+      source $GITHUB_ENV
+      conda activate roms-ci            	      
+      cd ${ROMS_ROOT}/Examples/Flux_frc/code_check/
+      ./do_test_roms.sh laptop
       shell: bash
