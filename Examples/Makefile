@@ -36,7 +36,7 @@ tag := $(shell git rev-parse HEAD)
 tline1 := git_hash=
 tline2:= 'git_hash=\"$(tag)\"'
 show_tag:
-	@gsed -i '/$(tline1)/c\      $(tline2)' Compile/add_git_hash.F
+	@sed -i '/$(tline1)/c\      $(tline2)' Compile/add_git_hash.F
 
 compile_clean:
 	rm -r Compile/ roms 2>/dev/null || :
