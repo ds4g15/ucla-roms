@@ -71,7 +71,7 @@ IOSRC = checkdims.F	insert_node.F\
  LROMS4 = 2/$(LROMS) 3/$(LROMS) 4/$(LROMS)
 
 # ROMS excutable (This is the first target and hence the default):
-$(SBIN): mpc $(OBJS)
+$(SBIN): $(OBJS)
 	$(LDR) $(FFLAGS) $(LDFLAGS) -o a.out $(OBJS) $(LCDF) $(LMPI)
 	mv a.out $(SBIN)
 
@@ -89,7 +89,7 @@ check_forces: check_forces.o $(SBIN)
 	mv a.out check_forces
 
 # Everything
-all: mpc tools depend $(SBIN)
+all: tools depend $(SBIN)
 
 # A program to test MPI halo exchange routines.
 # - ------- -- ---- --- ---- -------- ---------
@@ -103,16 +103,11 @@ mpi_test: $(MPI_TEST_OBJ)
 
 # Auxiliary utility programs
 # --------- ------- --------
- TOOLS = mpc cppcheck srcscheck checkkwds redefs
+ TOOLS = cppcheck srcscheck checkkwds redefs
 
 tools: $(TOOLS)
 
     TMP = .
-
-mpc: mpc.F Makefile
-	$(CPP) $(CPPFLAGS) -P mpc.F > $(TMP)/mpc.fpp
-	$(CFT) $(FFLAGS) $(LDFLAGS) -o mpc $(TMP)/mpc.fpp
-#	/bin/rm -rf $(TMP)/mpc.fpp
 
 partit_t.fpp: partit.F
 	$(CPP) -P $(CPPFLAGS) -DTRANSPOSED_MPI_NODE_ORDER partit.F| mpc > partit_t.fpp
@@ -146,8 +141,9 @@ setup_kwds.F: checkkwds read_inp.F
 	./checkkwds
 
 depend:  # Note: cross_matrix no longer used
-	@echo 'NOT Updating Make.depend (dependency list)'
+	@echo 'Updating Make.depend (dependency list)'
 	@echo '${SRCS}'
+	@/Users/dafyddstephenson/Code/makedepf90/makedepf90 $(SRCS) > Make.depend #20240308 installed an external copy of makedepf90
 	#@${ROMS_ROOT}/Tools-Roms/makedepf90 $(SRCS) > Make.depend #20231015 - Not using the default OR a generated dependency list, just copying from Cheyenne where makedepf90 works
 	@echo 'Updated Make.depend (dependency list)'
 

@@ -23,7 +23,7 @@ all:
 	@rm Compile/*.f	2>/dev/null || :
 	cp -p *.h *.F *.opt Makedefs.inc Compile 2>/dev/null || :
 	cd Compile; make depend 2>/dev/null || :
-	cd Compile; make mpc; make -j6; mv roms ..
+	cd Compile; make -j6; mv roms ..
 
 # note: "2>/dev/null || :" above is needed to suppress error 
 #       stop if no .h or .F files in current directory.

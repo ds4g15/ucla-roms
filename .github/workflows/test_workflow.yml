@@ -74,5 +74,6 @@ jobs:
       shell: bash
 
     - name: Run Tests
-      run: bash Examples/code_check/do_test_all.sh
+      #run: bash Examples/code_check/do_test_all.sh
+      run: /Users/dafyddstephenson/Code/my_ucla_roms/Examples/Flux_frc/code_check/do_test_roms.sh
       shell: bash
