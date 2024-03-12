@@ -202,7 +202,9 @@
 
  MAIN: DONE - Records written:
 
- MPI_run_time =   108.32470896399991     
+ MPI_run_time =   108.32470896399991
+
+
  Activated CPP configuration switches:
  <cppdefs.opt>
        USWC_sample             SOLVE3D                 UV_ADV
@@ -372,15 +374,15 @@
          set_frc :: swrad            input time (days) =   4725.00     rec =   2
          set_frc :: swrad            input time (days) =   4755.00     rec =   3
          set_frc :: swflux           input time (days) =   4725.00     rec =   2
-         set_frc :: zeta_east        input time (days) =   4726.57     rec =   1
          set_frc :: swflux           input time (days) =   4755.00     rec =   3
-         set_frc :: zeta_east        input time (days) =   4726.59     rec =   2
          set_frc :: zeta_west        input time (days) =   4726.57     rec =   1
+         set_frc :: zeta_east        input time (days) =   4726.57     rec =   1
          set_frc :: zeta_west        input time (days) =   4726.59     rec =   2
-         set_frc :: zeta_north       input time (days) =   4726.57     rec =   1
-         set_frc :: zeta_north       input time (days) =   4726.59     rec =   2
+         set_frc :: zeta_east        input time (days) =   4726.59     rec =   2
          set_frc :: zeta_south       input time (days) =   4726.57     rec =   1
+         set_frc :: zeta_north       input time (days) =   4726.57     rec =   1
          set_frc :: zeta_south       input time (days) =   4726.59     rec =   2
+         set_frc :: zeta_north       input time (days) =   4726.59     rec =   2
  1  4.2294652601353377E-03 2.7899253641131476E-03 3.9071731816490934E-01 3.6103203602200845E-01
  2  4.2245487867490191E-03 2.7863491099200696E-03 2.9989772394843772E-01 1.6298570316248956E-01
  3  4.2194102320696680E-03 2.7819227989974563E-03 4.1595610286153123E-01 3.0459050773043655E-01
@@ -402,8 +404,8 @@
 19  4.2026842104413258E-03 2.7621347453984386E-03 2.0730234943594233E-01 1.9883789102009566E-01
 20  4.2006384910980273E-03 2.7596404288430174E-03 2.0727106201880335E-01 1.9879371924711836E-01
        ocean_vars :: wrote history, tdays =   4726.5703  step =     20 rec =   2
- Process    0  thread  0  cpu time =       27.42 sec
+ Process    0  thread  0  cpu time =       28.39 sec
 
  MAIN: DONE - Records written:
 
- MPI_run_time =   108.32470896399991     
+ MPI_run_time =   100.66935448499999     
