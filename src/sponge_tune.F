@@ -52,14 +52,15 @@
       implicit none
 
       ! local
-      integer :: i
+      integer :: i,ierr
 
+      ierr = 0
       if (.not.diag_pflx.and.mynode==0) then
-        print *,'For Orlanski tuning,'
-        print *,'pflx diagnostics must be turned on!'
-        stop
-      endif
-
+         print *,'For Orlanski tuning,'
+         print *,'pflx diagnostics must be turned on!'
+         call MPI_Abort (ocean_grid_comm,911,ierr)
+      endif         
+      
       call store_string_att(bc_options,'UB_TUNING, ')
 
 
