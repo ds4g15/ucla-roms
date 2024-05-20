@@ -1,26 +1,18 @@
       module bulk_frc
 
-      ! BULK FORCING MODULE
-
-      ! initial coding: Devin Dollery,Jeroen Molemaker & Pierre Damien (2020)
-
 #include "cppdefs.opt"
-! CPP flag BULK_FRC covering entire module, module empty if off
-#if defined BULK_FRC /* for whole module! */
 
-      ! param.h needed for GLOBAL_2D_array to work
       use param
-      use read_write, only: set_frc_var_tile, ncvs
+      use dimensions
+      use mpi_exchanges
       use roms_read_write
-
+      
       implicit none
 
       private  ! make all variable private to this module unless public specified
 
 #include "bulk_frc.opt"
 
-      real,allocatable,dimension(:,:) ::  uwnd             ! time interpolated u-wind
-      real,allocatable,dimension(:,:) ::  vwnd             ! time interpolated v-wind
       real,allocatable,dimension(:,:) ::  tair             ! air temp
       real,allocatable,dimension(:,:) ::     Q             ! SPECIFIC humidity (kg/kg) (not relative), qair in old code
       real,allocatable,dimension(:,:) :: prate             ! prate (precipitation rate) - 'rain' variable in old code
@@ -34,61 +26,55 @@
 
       real,public,allocatable,dimension(:,:) :: wspd_used  ! wind speed at rho point (also used in BGC routines)
 
-
       public init_arrays_bulk_frc
-      public set_bulk_frc_tile
+      public set_bulk_frc
 
       contains
 
 ! ----------------------------------------------------------------------
       subroutine init_arrays_bulk_frc  ![
       implicit none
-
-      allocate(  uwnd(GLOBAL_2D_ARRAY) )
-      allocate(  vwnd(GLOBAL_2D_ARRAY) )
       allocate(  tair(GLOBAL_2D_ARRAY) )
       allocate(     Q(GLOBAL_2D_ARRAY) )
       allocate( prate(GLOBAL_2D_ARRAY) )
       allocate( lwrad(GLOBAL_2D_ARRAY) )
-
+      
       allocate( wspd_used(GLOBAL_2D_ARRAY) )
 
-      allocate( nc_uwnd%data( GLOBAL_2D_ARRAY,2) )
-      allocate( nc_vwnd%data( GLOBAL_2D_ARRAY,2) )
-      allocate( nc_tair%data( GLOBAL_2D_ARRAY,2) )
-      allocate( nc_Q%data(GLOBAL_2D_ARRAY,2) )
-      allocate( nc_prate%data( GLOBAL_2D_ARRAY,2) )
-      allocate( nc_lwrad%data( GLOBAL_2D_ARRAY,2) )
-      allocate( nc_swrad%data( GLOBAL_2D_ARRAY,2) )
+!     vdata needs to be of global_2d_array size
+      allocate( nc_uwnd%vdata(GLOBAL_2D_ARRAY,2) )
+      allocate( nc_vwnd%vdata(GLOBAL_2D_ARRAY,2) )
+!
+      allocate( nc_tair%vdata(GLOBAL_2D_ARRAY,2) )
+      allocate( nc_Q%vdata(GLOBAL_2D_ARRAY,2) )
+      allocate( nc_prate%vdata(GLOBAL_2D_ARRAY,2) )
+      allocate( nc_lwrad%vdata(GLOBAL_2D_ARRAY,2) )
+      allocate( nc_swrad%vdata(GLOBAL_2D_ARRAY,2) )
 
 #if defined TAU_CORRECTION
       allocate( taux(GLOBAL_2D_ARRAY) )
       allocate( tauy(GLOBAL_2D_ARRAY) )
-      allocate( nc_taux%data( GLOBAL_2D_ARRAY,2) )
-      allocate( nc_tauy%data( GLOBAL_2D_ARRAY,2) )
+
+      allocate( nc_taux%vdata(GLOBAL_2D_ARRAY,2) )
+      allocate( nc_tauy%vdata(GLOBAL_2D_ARRAY,2) )
 #endif
+
+      if (interp_frc==1) then
+        nc_uwnd%coarse = 1
+        nc_vwnd%coarse = 1
+        nc_tair%coarse = 1
+        nc_Q%coarse = 1
+        nc_prate%coarse = 1
+        nc_lwrad%coarse = 1
+        nc_swrad%coarse = 1
+      endif
 
 
       end subroutine init_arrays_bulk_frc  !]
-
 ! ----------------------------------------------------------------------
-      subroutine set_bulk_frc_tile(istr,iend,jstr,jend) ![
+      subroutine set_bulk_frc(istr,iend,jstr,jend) ![
 
-      ![Set all bulk forces.
-      !
-      ! Landing subroutine from set_forces
-      ! where all bulk forces are set.
-      !
-      ! All bulk variables need time interpolation only
-      ! here so can use same generic routine
-      !
-      ! 1) Find & save force variable file_indx & correct record (irec)
-      ! 2) Read in forcing data
-      ! 3) Interpolate input forcing to correct model time
-      !
-      ! ALL FORCING INPUT DATA NEEDS TO BE IN DAYS!]
-
-      use surf_flux, only: srflx
+      use surf_flux, only: srflx,uwnd,vwnd
 
       implicit none
 
@@ -99,30 +85,32 @@
       ! Thermodynamic forcing: Note that BULK_FLUX requires computing the
       ! short-wave radiation flux first because bulk flux routine performs
       ! the final assembly of everything.
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_swrad, srflx, interp_frc )  ! short wave radiation - this accounts for get_srflx.F & time interp of set_srflx.F in newer code and get_srflux.F & set_srflux() in old code
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_lwrad, lwrad, interp_frc )  ! lwrad
 
-      ! Wind (get_bulk_wnd.F & set_bulk_wnd() in old code)
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_uwnd,  uwnd,  interp_frc )  ! u-wind
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_vwnd,  vwnd,  interp_frc )  ! v-wind
+      ! All variables (including wind) should be on rho-points in the surface forcing
+      ! file. The ranges here need to match the sizes in the partitioned files
+      call set_frc_data(nc_swrad,srflx,'r')
+      call set_frc_data(nc_lwrad,lwrad,'r')
+      
+      call set_frc_data(nc_uwnd,uwnd,'r')
+      call set_frc_data(nc_vwnd,vwnd,'r')
+      
+      call set_frc_data(nc_tair,tair,'r')
+      call set_frc_data(nc_Q,Q,'r')
 
-      ! Atmospheric tracers (get_bulk_tra & set_bulk_tra() in old code)
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_tair,  tair,  interp_frc )
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_Q,     Q,     interp_frc )  ! Q (SPECIFIC humidity (kg/kg) (not relative) ) qair in old code
+      ! Possibly check units of Q and others
 
-        ! Check units of Q:
-        ! Needs to come after so Q_file_indx has been set.
-        ! If irec =1 only so that it only does it once as requires nf90_open
-        ! Can't be irec==0 as set to 1 by function above.
-        ! Incomplete at the moment.
-
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_prate, prate, interp_frc )  ! prate (precipitation rate) - 'rain' variable in old code get_bulk_prec.F & set_bulk_prec() in old code
-
+      call set_frc_data(nc_prate,prate,'r')
 
 #if defined TAU_CORRECTION
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_taux,  taux,  interp_frc )  ! Set field corrector in x-axis
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_tauy,  tauy,  interp_frc )  ! Set field corrector in y-axis
+      call set_frc_data(nc_taux,taux,'r')
+      call set_frc_data(nc_tauy,tauy,'r')
+!     call exchange_xxx(taux,tauy)
 #endif
+
+!     call exchange_xxx(srflx,lwrad)
+!     call exchange_xxx(uwnd,vwnd)
+!     call exchange_xxx(tair,Q)
+!     call exchange_xxx(prate)
 
 
       ! NEED TO ADD QCORRECTOR CALLS FOR SEA SURFACE TEMP AND/OR SALINITY:
@@ -132,25 +120,16 @@
 
       if (do_check_units) then
         if(mynode==0) print *,'Checking Bulk force units'
-        call nc_check_units(frcfile(nc_Q%file_indx),nc_Q%name,'kg/kg')
+        call nc_check_units(frcfile(nc_Q%ifile),nc_Q%vname,'kg/kg')
         call nc_check_units(
-     &         frcfile(nc_prate%file_indx),nc_prate%name,'cm/day')
+     &         frcfile(nc_prate%ifile),nc_prate%vname,'cm/day')
         do_check_units = .false.
       endif
 
 
-      end subroutine set_bulk_frc_tile  !]
-
+      end subroutine set_bulk_frc  !]
 !-----------------------------------------------------------------------
       subroutine calc_all_bulk_forces(istr,iend,jstr,jend)  ![
-
-      ! =========================================
-      ! CALCULATE INTERACTIVE BULK FORCE TRANSFER
-      ! =========================================
-
-      ! This started as a copy of bulk_flux_COARE.F
-      ! from the new code
-
 
 ! Compute bulk parameterization for surface wind stress and net heat
 ! fluxes. Adapted from COARE code originally written by David Rutgers
@@ -194,7 +173,7 @@
 
       ! Modules required
       ! ----------------
-      use surf_flux ! vars: sustr, sustr_r, svstr, svstr_r, stflx, sss, wrt_sflux, srflx
+      use surf_flux
       use tracers, only: t
       use grid
       use mixing
@@ -206,10 +185,6 @@
       ! input/outputs
       integer,intent(in)  :: istr,iend,jstr,jend
 
-
-#undef SST_SKIN
-#define BULK_EP
-
       integer i,j, IterMax,iter
       real a
       real rho0i
@@ -220,7 +195,7 @@
       real u10,Zo10,Cd10,Ch10,Ct10,Cd
       real Ct,CC,Ri,Ribcu,Zetu,L10
       real Wstar,Tstar,Qstar
-      real ZoW,ZoT,ZoT10,ZoQ,ZoL,L,Rr,Bf
+      real ZoW,ZoT,ZoT10,ZoQ,ZoL,L,Rr,Bff
       real Wpsi,Tpsi,Qpsi
       real wspd0,Wgus,charn
 
@@ -234,9 +209,9 @@
 
       real blk_Rgas,blk_ZW,blk_ZT,blk_ZQ,blk_beta,blk_Cpa,blk_Zabl
       parameter (blk_Rgas=287.1)
-      parameter (blk_ZW=10.0)
-      parameter (blk_ZT=10.0)
-      parameter (blk_ZQ=10.0)
+      parameter (blk_ZW=10.0)  ! The height at which the atm. Wind is taken
+      parameter (blk_ZT=10.0)  ! The height at which the atm. Temp is taken
+      parameter (blk_ZQ=10.0)  ! The height at which the atm. Humi.is taken
       parameter (blk_Zabl=600.0)
       parameter (blk_beta=1.2)
       parameter (blk_Cpa=1004.67)
@@ -347,7 +322,6 @@
 !# elif defined ROBUST_DIURNAL_SRFLUX
 !      real Ampl, dtau, tau1,tau2
 !# endif
-!# define SWRAD_DATA
 !# include "param.h"
 !# include "scalars"
 !# include "grid"
@@ -456,85 +430,9 @@
       ! SUBROUTINE FROM BULK_FLUX_COARE.F STARTS HERE
       ! =============================================
 
-! inverse seawater density, use mean value for seawater density.
 
       rho0i=1.0/rho0
 
-!      tmid=time+0.5*dt ! DevinD commented
-!> wind (m/s) - DevinD purely time interp, done already
-!      it2=itwnd ; cff1=wnd_time(it2)-tmid
-!      it1=3-it2 ; cff2=tmid-wnd_time(it1)
-!      if (cff1 < dt) synchro_flag=.true.
-!      cff=1./(cff1+cff2)
-!      cff1=cff1*cff ; cff2=cff2*cff
-
-!> tair (degC) - DevinD purely time interp, done already
-!      it4=ittair ; cff3=tair_time(it4)-tmid
-!      it3=3-it4  ; cff4=tmid-tair_time(it3)
-!      if (cff3 < dt) synchro_flag=.true.
-!      cff=1./(cff3+cff4)
-!      cff3=cff3*cff ; cff4=cff4*cff
-
-!> rhum (frac RELATIVE HUMIDITY)
-! convert to fraction from percent
-!      it6=itrhum ; cff5=rhum_time(it6)-tmid
-!      it5=3-it6  ; cff6=tmid-rhum_time(it5)
-!      if (cff5 < dt) synchro_flag=.true.
-!      cff=1./(100.*(cff5+cff6))
-!      cff5=cff5*cff ; cff6=cff6*cff
-
-!> rhum (frac of SPECIFIC HUMIDITY)  - DevinD purely time interp, done already
-!      it6=itrhum ; cff5=rhum_time(it6)-tmid
-!      it5=3-it6  ; cff6=tmid-rhum_time(it5)
-!      if (cff5 < dt) synchro_flag=.true.
-!      cff=1./(cff5+cff6)
-!      cff5=cff5*cff ; cff6=cff6*cff
-
-!> prate (m/s)
-!      it8=itprate ; cff7=prate_time(it8)-tmid
-!      it7=3-it8   ; cff8=tmid-prate_time(it7)
-!      if (cff7 < dt) synchro_flag=.true.
-
-! Drakkar rain is in units of [kg/m^2/s^2]. convert it to [m/s]
-!! UNITS?? isn't it [kg/m^2/s]?
-!cff7 and cff8 units of 1/precip?
-! using fresh water density rho=1000.
-
-! SY New units of cm/day--convert to m/s.
-!      cff=1./(100.*3600.*24.*(cff7+cff8))
-!      cff7=cff7*cff ; cff8=cff8*cff
-! units of [kg/m^2/s^1] --convert to m/s.
-!      cff=1./(1000.*(cff7+cff8))
-!      cff7=cff7*cff ; cff8=cff8*cff
-
-
-!> lwrad (degC.m/s)
-!      it10=itlrf ; cff9=lrf_time(it10)-tmid
-!      it9=3-it10 ; cff10=tmid-lrf_time(it9)
-!      if (cff9 < dt) synchro_flag=.true.
-!      cff=1./(rho0*Cp*(cff9+cff10))     ! <-- convert [Watts/m^2] into
-!      cff9=cff9*cff ; cff10=cff10*cff   !     kinematic flux [degC*m/s]
-
-# ifdef QCORRECTION
-!      it12=itdqdt ; cff11=dqdt_time(it12)-tmid  ! Flux correction for
-!      it11=3-it12 ; cff12=tmid-dqdt_time(it11)  ! net surface heat flux
-!      if (cff11 < dt) synchro_flag=.true.       ! (relaxation toward
-!      cff=1./(rho0*Cp*(cff11+cff12))            ! observed SST data)
-!      cff11=cff11*cff ; cff12=cff12*cff         ! and, optionally, ...
-!
-!      it14=itsst  ; cff13=sst_time(it14)-tmid
-!      it13=3-it14 ; cff14=tmid-sst_time(it13)
-!      if (cff13 < dt) synchro_flag=.true.
-!      cff=1/(cff13+cff14)
-!      cff13=cff13*cff ; cff14=cff14*cff
-# endif
-# ifdef SFLX_CORR
-!      it16=itsss  ; cff15=sss_time(it16)-tmid   ! the same for surface
-!      it15=3-it16 ; cff16=tmid-sss_time(it15)   ! freshwater flux
-!      if (cff15 < dt) synchro_flag=.true.
-!      cff=1./(cff15+cff16)
-!      cff15=cff15*cff ; cff16=cff16*cff
-# endif
 
       ! All calculations in this loop at rho-points. Loop over extended
       ! bounds.
@@ -545,21 +443,14 @@
 !          vwnd=cff1*vwind(i,j,it1)+cff2*vwind(i,j,it2)
           wspd_used(i,j)=sqrt(uwnd(i,j)*uwnd(i,j)+vwnd(i,j)*vwnd(i,j))
 
-!          tair=cff3*tairg(i,j,it3)  +cff4*tairg(i,j,it4) ! DevinD time only
-!          rhum=cff5*rhumg(i,j,it5)  +cff6*rhumg(i,j,it6) ! DevinD time only
-!          prate=cff7*prateg(i,j,it7)+cff8*prateg(i,j,it8) ! DevinD divide 1000 below
-
           ! convert [Watts/m^2] into kinematic flux [degC*m/s]
           radlw=lwrad(i,j) / (rho0*Cp)
 
           wspd0=wspd_used(i,j)
           TairC=tair(i,j) ! DevinD
           TairK=TairC+273.16
-# ifdef SST_SKIN
-          TseaC=sst_skin(i,j)   ! sea surface temperature and salinity
-# else
+
           TseaC=t(i,j,N,nrhs,itemp)
-# endif
           TseaK=TseaC+273.16
 
           ! label(HUMIDITY) - chose between specific or relative humidity
@@ -755,9 +646,9 @@
 !
 !  Compute gustiness in wind speed.
 !
-            Bf=-g/TairK*Wstar*(Tstar+0.61*TairK*Qstar)
-            if (Bf.gt.0.0) then
-              Wgus=blk_beta*(Bf*blk_Zabl)**r3
+            Bff=-g/TairK*Wstar*(Tstar+0.61*TairK*Qstar)
+            if (Bff.gt.0.0) then
+              Wgus=blk_beta*(Bff*blk_Zabl)**r3
             else
               Wgus=0.2
             endif
@@ -777,11 +668,7 @@
 !
 !  Compute turbulent sensible heat flux (W/m2), Hs.
 !
-          hfsen=-blk_Cpa*rhoAir*Wstar*Tstar
-!
-!  Compute turbulent latent heat flux (W/m2), Hl.
-!
-          hflat=-Hlv*rhoAir*Wstar*Qstar
+          hfsen=-blk_Cpa*rhoAir*Wstar*Tstar!
 !
 !  Compute Webb correction (Webb effect) to latent heat flux, Hlw.
 !
@@ -825,20 +712,18 @@
 !
           stflx(i,j,itemp)=srflx(i,j)+hflw+hflat+hfsen
 !
-# ifdef BULK_EP
-!
+# ifdef SALINITY          
 !  Total surface salt flux
 !
           evap=-cp*hflat/Hlv
-          ! DevinD old: divide prate by 1000: units of [kg/m^2/s^1 == mm/s] convert to m/s.
-          ! DevinD current: divide prate by 100.*3600.*24.: units of [cm/day] convert to [m/s] as per pdamien pacific.
+          ! Divide prate by 100.*3600.*24. to convert from [cm/day] to [m/s]
           stflx(i,j,isalt)=(evap- ( prate(i,j)/(100.*3600.*24.) ) )*t(i,j,N,nrhs,isalt)
-
-# endif
-
+#endif
 # ifdef MASKING
           stflx(i,j,itemp)=stflx(i,j,itemp)*rmask(i,j)
+# ifdef SALINITY
           stflx(i,j,isalt)=stflx(i,j,isalt)*rmask(i,j)
+# endif          
 # endif
 !
 !  Save for the calculation of wind stress
@@ -876,6 +761,7 @@
 !---------------------------------------------------------------
 !
 # ifdef QCORRECTION
+          ! Not sure that this still works....
           cff=cff11*dqdtg(i,j,it11)+cff12*dqdtg(i,j,it12)
           stflx(i,j,itemp)=stflx(i,j,itemp) +cff*(
      &           t(i,j,N,nrhs,itemp) -cff13*sstg(i,j,it13)
@@ -891,11 +777,13 @@
 ! Flux correction to surface salt flux.
 !--------------------------------------------------------------
 # ifdef SFLX_CORR
+# ifdef SALINITY          
           stflx(i,j,isalt)=stflx(i,j,isalt) -dSSSdt*(
      &           t(i,j,N,nrhs,isalt) - sss(i,j)  )
 #  ifdef MASKING
      &                                           *rmask(i,j)
 #  endif
+# endif          
 # endif
 
 !---------------------------------------------------------------
@@ -1027,10 +915,7 @@
         enddo
       enddo
 
-!     call wrt_sflux  ! write flux variables to flux output file
-
       end subroutine calc_all_bulk_forces  !]
-
 !-----------------------------------------------------------------------
       function bulk_psiu (ZoL, pi)  ![
 !
@@ -1093,7 +978,6 @@
 
       return
       end function bulk_psiu  !]
-
 !-----------------------------------------------------------------------
       function bulk_psit (ZoL, pi)  ![
 
@@ -1154,9 +1038,6 @@
 
       return
       end function bulk_psit  !]
-
 !-----------------------------------------------------------------------
-
-#endif /* BULK_FRC for whole module */
 
       end module bulk_frc

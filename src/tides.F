@@ -6,6 +6,8 @@
       use scalars                                          ! For iic, ntstart, deg2rad
       use nc_read_write
       use roms_read_write
+      use mpi_exchanges
+      use grid
 
       implicit none
 
@@ -48,7 +50,11 @@
       endif
 
       if (pot_tides.or.bry_tides) then
-        call read_tides
+        if (ana_tides) then
+          call make_tides
+        else
+          call read_tides
+        endif
       endif
 
       end subroutine init_tides  !]
@@ -99,6 +105,11 @@
 
 #  ifdef OBC_WEST
           if (WESTERN_EDGE) THEN
+#   ifdef ANA_BRY
+            zeta_west(jstrR:jendR) = 0
+            ubar_west(jstrR:jendR) = 0
+            vbar_west(jstr :jendR) = 0
+#   endif
             i=istr-1
             do j=jstrR,jendR
               zeta_west(j) =zeta_west(j)
@@ -119,6 +130,11 @@
 
 #  ifdef OBC_EAST
           if (EASTERN_EDGE) THEN
+#   ifdef ANA_BRY
+            zeta_east(jstrR:jendR) = 0
+            ubar_east(jstrR:jendR) = 0
+            vbar_east(jstr :jendR) = 0
+#   endif
             i = iend+1
             do j=jstrR,jendR
               zeta_east(j) =zeta_east(j)
@@ -137,6 +153,11 @@
 
 #  ifdef OBC_SOUTH
           if (SOUTHERN_EDGE) THEN
+#   ifdef ANA_BRY
+            zeta_south(istrR:jendR) = 0
+            ubar_south(istr :iendR) = 0
+            vbar_south(istrR:iendR) = 0
+#   endif
             j=jstr-1
             do i=istrR,iendR
               zeta_south(i)=zeta_south(i)
@@ -156,6 +177,11 @@
 #  endif
 #  ifdef OBC_NORTH
           if (NORTHERN_EDGE) THEN
+#   ifdef ANA_BRY
+            zeta_north(istrR:jendR) = 0
+            ubar_north(istr :iendR) = 0
+            vbar_north(istrR:iendR) = 0
+#   endif
             j=jend+1
             do i=istrR,iendR
               zeta_north(i)=zeta_north(i)
@@ -249,37 +275,53 @@
         start(3) = itide
 
         if (bry_tides) then
-
-          call ncread(ncid,'ssh_Re',ztide_r(i0:i1,j0:j1,itide),start)          ! read tidal elevations
-          call exchange_tile(1,nx,1,ny, ztide_r(START_2D_ARRAY,itide),1)
+          call ncread(ncid,'ssh_Re',ztide_r(i0:i1,j0:j1,itide),start)   ! read tidal elevations
           call ncread(ncid,'ssh_Im',ztide_i(i0:i1,j0:j1,itide),start)
-          call exchange_tile(1,nx,1,ny, ztide_i(START_2D_ARRAY,itide),1)
+!         call exchange_xxx(ztide_r(:,:,itide),ztide_i(:,:,itide))
 
-          call ncread(ncid,'u_Re',  utide_r( 1:i1,j0:j1,itide),start)          ! read tidal barotropic velocities.
-          call exchange_tile(1,nx,1,ny, utide_r(START_2D_ARRAY,itide),1)
-          call ncread(ncid,'u_Im',  utide_i( 1:i1,j0:j1,itide),start)          ! these currents must be on u,v-points
-          call exchange_tile(1,nx,1,ny, utide_i(START_2D_ARRAY,itide),1)
-          call ncread(ncid,'v_Re',  vtide_r(i0:i1, 1:j1,itide),start)          ! and rotated to align with the grid
-          call exchange_tile(1,nx,1,ny, vtide_r(START_2D_ARRAY,itide),1)
-          call ncread(ncid,'v_Im',  vtide_i(i0:i1, 1:j1,itide),start)
-          call exchange_tile(1,nx,1,ny, vtide_i(START_2D_ARRAY,itide),1)
+          call ncread(ncid,'u_Re',utide_r(1:i1,j0:j1,itide),start)      ! read tidal barotropic velocities.
+          call ncread(ncid,'u_Im',utide_i(1:i1,j0:j1,itide),start)      ! these currents must be on u,v-points
+!         call exchange_xxx(utide_r(:,:,itide),utide_i(:,:,itide))      ! and rotated to align with the grid
 
+          call ncread(ncid,'v_Re',  vtide_r(i0:i1,1:j1,itide),start)    
+          call ncread(ncid,'v_Im',  vtide_i(i0:i1,1:j1,itide),start)
+!         call exchange_xxx(vtide_r(:,:,itide),vtide_i(:,:,itide))
         endif
 
         if (pot_tides) then
-
           call ncread(ncid,'pot_Re',ptide_r(i0:i1,j0:j1,itide),start)
-          call exchange_tile(1,nx,1,ny, ptide_r(START_2D_ARRAY,itide),1)
           call ncread(ncid,'pot_Im',ptide_i(i0:i1,j0:j1,itide),start)
-          call exchange_tile(1,nx,1,ny, ptide_i(START_2D_ARRAY,itide),1)
-
+!         call exchange_xxx(ptide_r(:,:,itide),ptide_i(:,:,itide))
         endif
 
       end do ! <-- itide=1,ntides
 
+      if (bry_tides) then
+        call exchange_xxx(ztide_r,ztide_i)
+        call exchange_xxx(utide_r,utide_i)
+        call exchange_xxx(vtide_r,vtide_i)
+      endif
+      if (pot_tides) then
+        call exchange_xxx(ptide_r,ptide_i)
+      endif
+
       if(mynode==0) write(*,'(7x,A)')'tides :: read all tides'
 
       end subroutine read_tides  !]
+!-----------------------------------------------------------------------
+      subroutine make_tides  ![
+      ! Construct an analytical tidal forcing
+
+      use dimensions
+      implicit none
+
+      ! local
+
+#include "ana_tide.h"
+
+      if(mynode==0) write(*,*) 'tides :: constructed analytical tides'
+
+      end subroutine make_tides  !]
 !-----------------------------------------------------------------------
 
       end module tides

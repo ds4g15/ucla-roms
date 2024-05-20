@@ -6,9 +6,13 @@
       use param
       use tracers, only: t_vname, t, iTandS
       use bgc ! get_init_bgc_diag
+#ifdef MARBL
+      use marbl_driver, only: marbldrv_read_ss_vars_from_rst
+#endif
       use coupling
       use grid
       use hidden_mpi_vars
+      use analytical
       use mixing
       use ocean_vars
       use basic_output
@@ -243,20 +247,24 @@ c--#define VERBOSE
       ierr=nf90_inq_varid(ncid, 'time_step', varid)
       if (ierr == nf90_noerr) then
         ierr=nf90_inquire_variable(ncid, varid, dimids=ibuff)
-        if (ierr/=0) call handle_ierr(ierr,'get_init: cannot get time_step dimids')
+        if (ierr/=0) 
+     &    call handle_ierr(ierr,'get_init: cannot get time_step dimids')
         ierr=nf90_inquire_dimension(ncid, ibuff(1), len=count(1))
-        if (ierr/=0) call handle_ierr(ierr,'get_init: cannot get time dim size')
+        if (ierr/=0) 
+     &    call handle_ierr(ierr,'get_init: cannot get time dim size')
         start(1)=1 ; start(2)=record ; count(2)=1
         ibuff(1:iaux)=0
         ierr=nf90_get_var(ncid, varid, ibuff, start, count)
-        if (ierr/=0) call handle_ierr(ierr,'get_init: cannot read time_step')
+        if (ierr/=0) 
+     &  call handle_ierr(ierr,'get_init: cannot read time_step')
         ntstart=ibuff(1)+1
-!              nrecrst=ibuff(2)
+
 #ifdef EXACT_RESTART
         if (tindx == 2 .and. record < max_rec) then
           start(2)=record+1
           ierr=nf90_get_var(ncid, varid, ibuff, start, count)
-          if (ierr/=0) call handle_ierr(ierr,'get_init: cannot read 2nd time_step')
+          if (ierr/=0) 
+     &  call handle_ierr(ierr,'get_init: cannot read 2nd time_step')
 # ifdef VERBOSE
           write(*,*) 'ibuff(1),ntstart =', ibuff(1), ntstart
 # endif
@@ -305,37 +313,17 @@ c--#define VERBOSE
 
       start=1; start(3)=record                                       ! 2D vars
 
-      call ncread(ncid,vname(1,indxZ),zeta(i0:i1,j0:j1,1),start)
-      zeta(i0:i1,j0:j1,1)=zeta(i0:i1,j0:j1,1)*rmask(i0:i1,j0:j1)     ! masking needed else answer changed?
-      call exchange_tile(1,nx,1,ny, zeta(START_2D_ARRAY,1),1)        ! exchange needed for zeta
+      call ncread(ncid,'zeta',zeta(i0:i1,j0:j1,1),start)
+      zeta(i0:i1,j0:j1,1)=zeta(i0:i1,j0:j1,1)*rmask(i0:i1,j0:j1)
+      call exchange_xxx(zeta(:,:,1))                              
 
-      ! in order to get the exact same values as the ncdf_read (original)
-      ! method, I needed to copy if (rmask(i,j)+rmask(i-1,j) > 0.5)...
-      ! just using ubar=ubar*umask did not get an exact match near the
-      ! shoreline. This was necessary for vbar, u and v too.
-      call ncread(ncid,vname(1,indxUb),ubar( 1:i1,j0:j1,1),start)
-      do j=j0,j1
-        do i=1,i1
-          if (rmask(i,j)+rmask(i-1,j) > 0.5) then
-          else
-            ubar(i,j,1)=0.D0
-          endif
-        enddo
-      enddo
-!      ubar(1:i1,j0:j1,1) = ubar(1:i1,j0:j1,1)*umask(1:i1,j0:j1)     ! umask didn't give same answer???
-      call exchange_tile(1,nx,1,ny, ubar(START_2D_ARRAY,1),1)        ! not sure if exchange is needed for remaining vars
+      call ncread(ncid,'ubar',ubar( 1:i1,j0:j1,1),start)
+      ubar(1:i1,j0:j1,1) = ubar(1:i1,j0:j1,1)*umask(1:i1,j0:j1)  
+      call exchange_xxx(ubar(:,:,1))
 
-      call ncread(ncid,vname(1,indxVb),vbar(i0:i1, 1:j1,1),start)
-      do j=1,j1
-        do i=i0,i1
-          if (rmask(i,j)+rmask(i,j-1) > 0.5) then
-          else
-            vbar(i,j,1)=0.D0
-          endif
-        enddo
-      enddo
-!      vbar(i0:i1,1:j1,1) = vbar(i0:i1,1:j1,1)*vmask(i0:i1,1:j1)     ! vmask didn't give same answer
-      call exchange_tile(1,nx,1,ny, vbar(START_2D_ARRAY,1),1)
+      call ncread(ncid,'vbar',vbar(i0:i1, 1:j1,1),start)
+      vbar(i0:i1,1:j1,1) = vbar(i0:i1,1:j1,1)*vmask(i0:i1,1:j1)
+      call exchange_xxx(vbar(:,:,1))
 
 ! Two sets of fast-time-averaged barotropic fluxes needed for exact
 ! restart in the case when using Adams-Bashforth-like extrapolation of
@@ -396,33 +384,17 @@ c--#define VERBOSE
 
       start=1; start(4)=record                                       ! 3D vars
 
-      call ncread(ncid,vname(1,indxU), u( 1:i1,j0:j1,:,tindx),start)           ! u requires masking and
-!     do j=j0,j1                                                               ! exchange for some reason?
-!       do i=1,i1
-!         if (rmask(i,j)+rmask(i-1,j) > 0.5) then
-!         else
-!           u(i,j,:,tindx)=0.D0
-!         endif
-!       enddo
-!     enddo
-      do k=1,N
+      call ncread(ncid,vname(1,indxU), u(1:i1,j0:j1,:,tindx),start) 
+      do k=1,nz
         u(1:i1,j0:j1,k,tindx) = u(1:i1,j0:j1,k,tindx)*umask(1:i1,j0:j1)
       enddo
-      call exchange_tile(1,nx,1,ny, u(START_2D_ARRAY,1,tindx),N)
+      call exchange_xxx(u(:,:,:,tindx) )
 
       call ncread(ncid,vname(1,indxV), v(i0:i1, 1:j1,:,tindx),start)           ! v requires masking and
-!     do j=1,j1                                                                ! exchange for some reason?
-!       do i=i0,i1
-!         if (rmask(i,j)+rmask(i,j-1) > 0.5) then                              ! see comment by ubar for masking
-!         else
-!           v(i,j,:,tindx)=0.D0
-!         endif
-!       enddo
-!     enddo
        do k=1,nz
          v(i0:i1,1:j1,k,tindx) = v(i0:i1,1:j1,k,tindx)*vmask(i0:i1,1:j1)
        enddo
-      call exchange_tile(1,nx,1,ny, v(START_2D_ARRAY,1,tindx),N)
+      call exchange_xxx(v(:,:,:,tindx) )
 
 # if defined NHMG
       ! since ncdf_read already does an exchange to fill buffers, we're
@@ -445,7 +417,7 @@ c--#define VERBOSE
 
 ! Tracer variables.
 
-      do itrc=1,NT
+      do itrc=1,nt
 
         ierr=nf90_inq_varid(ncid, t_vname(itrc), varid)
         if (ierr == nf90_noerr) then
@@ -453,7 +425,7 @@ c--#define VERBOSE
           do k=1,N
             t(i0:i1,j0:j1,k,tindx,itrc)=t(i0:i1,j0:j1,k,tindx,itrc)*rmask(i0:i1,j0:j1)
           enddo
-          call exchange_tile(1,nx,1,ny, t(START_2D_ARRAY,1,tindx,itrc),N)      ! DevinD - confirmed needs an exchange for some reason?
+          call exchange_xxx(t(:,:,:,tindx,itrc) ) 
         else
 
           if (itrc <= iTandS) then ! temperature and salt(s) always require inital condition
@@ -461,7 +433,7 @@ c--#define VERBOSE
      &                  nf90_strerror(ierr)
             goto 99                                         !--> ERROR
           else
-            t(GLOBAL_2D_ARRAY,1,tindx,itrc) = 0.0
+            t(:,:,:,tindx,itrc) = 0.0
             if(mynode==0) write(*,*) ' --- WARNING: '
      &         , trim(t_vname(itrc))
      &         , ' not in initial file.  Initialized to 0.0'
@@ -475,9 +447,9 @@ c--#define VERBOSE
 # ifdef LMD_KPP
       ierr=nf90_inq_varid(ncid, vname(1,indxHbls), varid)
       if (ierr == nf90_noerr) then
-        call ncread(ncid,vname(1,indxHbls),hbls(i0:i1,j0:j1,tindx),start)      ! mask doesn't change answer but makes
-        hbls(i0:i1,j0:j1,tindx)=hbls(i0:i1,j0:j1,tindx)*rmask(i0:i1,j0:j1)     ! output mask 0, rather than random numbers
-        call exchange_tile(1,nx,1,ny, hbls(START_2D_ARRAY,tindx),1)            ! confirmed needs an exchange, not sure why
+        call ncread(ncid,vname(1,indxHbls),hbls(i0:i1,j0:j1),start)      ! mask doesn't change answer but makes
+        hbls(i0:i1,j0:j1)=hbls(i0:i1,j0:j1)*rmask(i0:i1,j0:j1)     ! output mask 0, rather than random numbers
+        call exchange_xxx(hbls(:,:) )
       else
         mpi_nonexit_warn write(*,'(1x,6A)')        'WARNING: netCDF ',
      & 'variable ''', trim(vname(1,indxHbls)), ''' not found in ''',
@@ -488,9 +460,9 @@ c--#define VERBOSE
 # ifdef LMD_BKPP
       ierr=nf90_inq_varid(ncid, vname(1,indxHbbl), varid)
       if (ierr == nf90_noerr) then
-        call ncread(ncid,vname(1,indxHbbl),hbbl(i0:i1,j0:j1,tindx),start)      ! mask doesn't change answer but makes
-        hbbl(i0:i1,j0:j1,tindx)=hbbl(i0:i1,j0:j1,tindx)*rmask(i0:i1,j0:j1)     ! output mask 0, rather than random numbers
-        call exchange_tile(1,nx,1,ny, hbbl(START_2D_ARRAY,tindx),1)            ! confirmed needs an exchange, not sure why
+        call ncread(ncid,vname(1,indxHbbl),hbbl(i0:i1,j0:j1),start)      ! mask doesn't change answer but makes
+        hbbl(i0:i1,j0:j1)=hbbl(i0:i1,j0:j1)*rmask(i0:i1,j0:j1)     ! output mask 0, rather than random numbers
+        call exchange_xxx(hbbl(:,:) )            ! confirmed needs an exchange, not sure why
       else
         mpi_nonexit_warn write(*,'(1x,6A)')        'WARNING: netCDF ',
      & 'variable ''', trim(vname(1,indxHbbl)), ''' not found in ''',
@@ -499,55 +471,13 @@ c--#define VERBOSE
       endif
 # endif
 
-# if defined BIOLOGY_BEC2 && defined BEC2_DIAG
-      if(mynode==0) write(*,*),'total # of 2D diagnostics:',nr_bec2_diag_2d
-      if(mynode==0) write(*,*),'total # of 3D diagnostics:',nr_bec2_diag_3d
-
-      do itrc=1,nr_bec2_diag_2d
-!         lvar=lenstr(vname_bec2_diag_2d(1,itrc))
-         ierr=nf90_inq_varid (ncid, vname_bec2_diag_2d(1,itrc), varid)
-         if (ierr .eq. nf90_noerr) then
-           call ncread(ncid,vname_bec2_diag_2d(1,itrc),bec2_diag_2d(i0:i1,j0:j1,itrc),start)
-           bec2_diag_2d(i0:i1,j0:j1,itrc)=bec2_diag_2d(i0:i1,j0:j1,itrc)*rmask(i0:i1,j0:j1)
-           call exchange_tile(1,nx,1,ny, bec2_diag_2d(START_2D_ARRAY,itrc),1)
-         else
-            bec2_diag_2d(GLOBAL_2D_ARRAY,itrc) = 0.0
-            mpi_master_only write(*,*) ' --- WARNING: '
-     &         , trim(vname_bec2_diag_2d(1,itrc))
-     &         , ' not in initial file.  Initialized to 0.0'
-            ierr=nf90_noerr
-         endif
-      end do
-
-      start=1; start(4)=record                                       ! 3D vars
-      ! Read in 3d diagnostic variables:
-      do itrc=1,nr_bec2_diag_3d
-!         lvar=lenstr(vname_bec2_diag_3d(1,itrc))
-         ierr=nf90_inq_varid (ncid, vname_bec2_diag_3d(1,itrc), varid)
-         if (ierr == nf90_noerr) then
-           call ncread(ncid, vname_bec2_diag_3d(1,itrc), bec2_diag_3d(i0:i1,j0:j1,:,itrc),start)
-           do k=1,N
-             bec2_diag_3d(i0:i1,j0:j1,k,itrc)=bec2_diag_3d(i0:i1,j0:j1,k,itrc)*rmask(i0:i1,j0:j1)
-           enddo
-           call exchange_tile(1,nx,1,ny, bec2_diag_3d(START_2D_ARRAY,1,itrc),N)
-!            ierr=ncdf_read (ncid,  varid, record, r_var
-!     &                    , bec2_diag_3d(START_2D_ARRAY,1,itrc), N)
-!            if (ierr /= nf90_noerr) then
-!               write(*,2) vname_bec2_diag_3d(1,itrc)(1:lvar), record,
-!     &              trim(ininame)
-!               goto 99             !--> ERROR
-!            endif
-         else
-            bec2_diag_3d(GLOBAL_2D_ARRAY,1,itrc) = 0.0
-            mpi_master_only write(*,*) ' --- WARNING: '
-     &         , trim(vname_bec2_diag_3d(1,itrc))
-     &         , ' not in initial file.  Initialized to 0.0'
-            ierr=nf90_noerr
-         endif
-      end do
-# endif /* BIOLOGY_BEC2 && BEC2_DIAG */
-
+#ifdef MARBL
+!     Read in MARBL saved_state variables here
+      call marbldrv_read_ss_vars_from_rst(ncid,record)
+#endif /* MARBL */      
+      
 #endif /* SOLVE3D */
+
 
 #ifdef DIAGNOSTICS
       if (diag_pflx) call get_init_slow(ncid,record,tindx)
@@ -624,6 +554,11 @@ c--#define VERBOSE
         vbar(:     ,jend+1,1)      =0.0
       endif
 #endif
+
+#if defined ANA_BRY
+      call ana_init_generic(1,nx,1,ny)
+#endif
+
 
 #ifdef VERBOSE
       write(*,'(1x,3(1x,A,I6))') 'return from get_init, ntstart =',

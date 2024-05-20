@@ -62,6 +62,9 @@ c**     dtau=(1.-1./6.)*dt
 
       do j=jstr,jend
 
+      !!! For NHMG pipes, the flux needs to be out of the bottom.
+      !!! Additionally, modify, where needed, the We to Wi split 
+      !!! for pipe sources
         do i=istr,iend
           Wi(i,j,0)=0.
         enddo
@@ -197,7 +200,7 @@ c**         Wi(i,j,k)=0.            !<-- back to fully explicit code
 #  endif
 # endif
 # ifdef EXCHANGE
-      call exchange_2_tile (istr,iend,jstr,jend, We,N+1, Wi,N+1)
+      call exchange_xxx(We,Wi)
 # endif
       end
 #else

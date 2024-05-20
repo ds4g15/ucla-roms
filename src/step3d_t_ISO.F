@@ -58,6 +58,9 @@ c--# define CONST_TRACERS
       use river_frc
       use surf_flux, only: stflx, srflx
       use tracers
+#ifdef MARBL      
+      use marbl_driver, only: marbldrv_column_physics
+#endif      
       use diagnostics
       use eos_vars
       use grid
@@ -1056,19 +1059,35 @@ c??         enddo
 
       enddo     !<-- itrc
 
-# if defined BIOLOGY_BEC2
+# if defined(MARBL)
+
+      if (mynode==0) then
+      print *, 'doing BGC with MARBL'
+      end if
+      
+!     Pass indices, tracer and mask arrays, diagnostics arrays, and saved state arrays to MARBL
+!      if (mynode==0) then
+!         print *, shape(t), ' is the shape of t'
+!         print *, lbound(t), ' is the lower bound of t'
+!      end if
+      call marbldrv_column_physics(istr,iend,jstr,jend,t)
+# elif defined(BIOLOGY_BEC2)
+      if (mynode==0) then
+      print *, 'doing BGC with BEC'
+      end if
+      
       call ecosys_bec2_tile(istr,iend,jstr,jend) ! BEC, 2014
 # endif
 
 # if defined EW_PERIODIC || defined NS_PERIODIC || defined MPI
-      do itrc=1,NT-1,2
-        call exchange_2_tile(istr,iend,jstr,jend,
-     &                       t(START_2D_ARRAY,1,nnew,itrc  ), N,
-     &                       t(START_2D_ARRAY,1,nnew,itrc+1), N)
+      ! for BGC, we should be able to pack more tracer arrays
+      ! in a single mpi_exchange
+      do itrc=1,nt-1,2
+        call exchange_xxx( t(:,:,:,nnew,itrc),
+     &                     t(:,:,:,nnew,itrc+1) )
       enddo
-      if (mod(NT,2) == 1) then
-        call exchange_tile (istr,iend,jstr,jend,
-     &                          t(START_2D_ARRAY,1,nnew,NT), N)
+      if (mod(nt,2) == 1) then
+        call exchange_xxx( t(:,:,:,nnew,nt) )
       endif
 # endif
       end

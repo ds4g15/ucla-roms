@@ -8,7 +8,7 @@
 #include "cppdefs.opt"
 
       use param
-      use read_write, only: set_frc_var_tile, ncvs
+      use dimensions
       use roms_read_write
       use nc_read_write
       use netcdf
@@ -37,6 +37,10 @@
       real,public,allocatable,dimension(:,:)   :: svstr_r  ! rho-point, only used in lmd_kpp to get ustar
       real,public,allocatable,dimension(:,:,:) :: stflx    ! Surface fluxes of tracer type variables (rho-points)
       real,public,allocatable,dimension(:,:)   :: srflx    ! Short-wave radiation surface flux
+
+      real,public,allocatable,dimension(:,:) ::  uwnd             ! time interpolated u-wind
+      real,public,allocatable,dimension(:,:) ::  vwnd             ! time interpolated v-wind      
+      
       character(len=5) :: sustr_name = 'sustr'
       character(len=5) :: svstr_name = 'svstr'
       character(len=5) :: shflx_name = 'shflx'
@@ -55,8 +59,8 @@
       real,public :: dSSSdt                                ! input units (cm/day)
 
       ! Netcdf outputting:
-      integer            :: output_time = 0         ! record number of output. 0 indicates we need new file
-      integer            :: record = nrpf           ! to trigger the first file creation
+      integer            :: output_time = 0  
+      integer            :: record = nrpf     ! to trigger the first file creation
       integer :: ncid = -1, prev_fill_mode
 
       ! Public functions
@@ -73,17 +77,18 @@
 
       ! local
       character(len=30) :: string
-
+      allocate(  uwnd  (GLOBAL_2D_ARRAY)    );
+      allocate(  vwnd  (GLOBAL_2D_ARRAY)    );       
       allocate( sustr  (GLOBAL_2D_ARRAY)    ); sustr=init
       allocate( sustr_r(GLOBAL_2D_ARRAY)    ); sustr_r=init
       allocate( svstr  (GLOBAL_2D_ARRAY)    ); svstr=init
       allocate( svstr_r(GLOBAL_2D_ARRAY)    ); svstr_r=init
-      allocate( stflx  (GLOBAL_2D_ARRAY,NT) ); stflx=init
+      allocate( stflx  (GLOBAL_2D_ARRAY,nt) ); stflx=init
       allocate( srflx  (GLOBAL_2D_ARRAY)    ); srflx=init
 
 #if defined SFLX_CORR && defined SALINITY && !defined ANA_SSFLUX
       allocate( sss(GLOBAL_2D_ARRAY)        ); sss=init
-      allocate(  nc_sss%data( GLOBAL_2D_ARRAY,2) )
+      allocate(nc_sss%vdata(GLOBAL_2D_ARRAY,2) )
 
       call store_string_att(surf_forcing_strings,'<surf_flux.F>')
       call store_string_att(surf_forcing_strings,'dSSSdt=')
@@ -101,25 +106,21 @@
 
       end subroutine init_arrays_surf_flx  !]
 ! ----------------------------------------------------------------------
-      subroutine set_surf_field_corr(istr,iend,jstr,jend)  ![
+      subroutine set_surf_field_corr ![
       ! Set surface fields that will be restored towards
 
       implicit none
 
-      ! input/outputs
-      integer,intent(in)  :: istr,iend,jstr,jend
-
-
 #if defined QCORRECTION && !defined ANA_SST
       ! Sea-surface temperature (SST) data
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_sst, sst, interp_frc )
+      print *,'Allocate space for sst first!! '
+      call set_frc_data(nc_sst,sst)
 #endif
 
 #if defined SFLX_CORR && defined SALINITY && !defined ANA_SSFLUX
       ! Sea-surface salinity (SSS) data
-      call set_frc_var_tile( istr, iend, jstr, jend, nc_sss, sss, interp_frc )
+      call set_frc_data(nc_sss,sss)
 #endif
-
 
       end subroutine set_surf_field_corr  !]
 ! ----------------------------------------------------------------------
@@ -153,12 +154,12 @@
 
       ! output surface flux as per Eq.Sys. units m^2/s^2 not N/m^2
       if (wrt_smflx) then
-        varid = nccreate(ncid,'sustr',(/'xi_u   ','eta_rho','time   '/),
+        varid = nccreate(ncid,'sustr',(/dn_xu,dn_yr,dn_tm/),
      &                   (/xi_u,eta_rho,0/))
         ierr = nf90_put_att(ncid,varid,'long_name',
      &         'wind stress in x-direction')
         ierr = nf90_put_att(ncid,varid,'units','m^2/s^2')
-        varid = nccreate(ncid,'svstr',(/'xi_rho','eta_v ','time  '/),
+        varid = nccreate(ncid,'svstr',(/dn_xr,dn_yv,dn_tm/),
      &                   (/xi_rho,eta_v,0/))
         ierr = nf90_put_att(ncid,varid,'long_name',
      &         'wind stress in y-direction')
@@ -166,15 +167,13 @@
       endif
 
       if (wrt_stflx) then
-         varid = nccreate(ncid,shflx_name,(/'xi_rho ',
-     &        'eta_rho','time   '/),
+        varid = nccreate(ncid,shflx_name,(/dn_xr,dn_yr,dn_tm/),
      &                 (/xi_rho,eta_rho,0/))
         ierr = nf90_put_att(ncid,varid,'long_name',
      &                            'Surface heat flux')
         ierr = nf90_put_att(ncid,varid,'units','degC m/s')
         if (salinity) then
-           varid = nccreate(ncid,'ssflx',(/'xi_rho ',
-     &          'eta_rho','time   '/),
+          varid = nccreate(ncid,'ssflx',(/dn_xr,dn_yr,dn_tm/),
      &                 (/xi_rho,eta_rho,0/))
           ierr = nf90_put_att(ncid,varid,'long_name',
      &                            'Surface Salinity flux')
@@ -196,7 +195,7 @@
       character(len=99),save :: fname
       integer                :: ierr
 
-      output_time = output_time + dt                           ! only start count after first timestep
+      output_time = output_time + dt 
 
       if (sflx_avg) call calc_sflx_avg
 
@@ -244,7 +243,7 @@
         if (mynode == 0) then
             write(*,'(7x,A,1x,F11.4,2x,A,I7,1x,A,I4,A,I4,1x,A,I3)')  ! confirm work completed
      &        'surf_flux :: wrote surface flux, tdays =', tdays,
-     &        'step =', iic-1, 'rec =', record
+     &        'step =', iic, 'rec =', record
         endif
       endif  ! time for an output
 
@@ -264,7 +263,7 @@
       if (sflx_avg) then
         call create_file('_flx_avg',fname)
       else
-        call create_file('_flx',fname)
+        call create_file('_flx_his',fname)
       endif
 
       ierr=nf90_open(fname,nf90_write,ncid)
