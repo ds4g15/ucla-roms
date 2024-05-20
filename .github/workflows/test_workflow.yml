@@ -66,7 +66,9 @@ jobs:
       run: |
         source $HOME/.bashrc
         source $GITHUB_ENV
-        conda activate roms-ci            	
+        conda activate roms-ci
+        #Copy GNU-compatible makefiles
+        rsync -av ${ROMS_ROOT}/ci/ci_makefiles/ ${ROMS_ROOT}
         cd Work/
         make nhmg
         cd ${ROMS_ROOT}/Tools-Roms/
