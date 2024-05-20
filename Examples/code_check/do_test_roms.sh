@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # need this here as well, in case example run on its own:
-if [ "$1" != "expanse" -a "$1" != "maya" -a "$1" != "laptop" ]
+if [ "$1" != "expanse" -a "$1" != "maya" -a "$1" != "laptop" -a "$1" != "github" ]
 then
 echo "Script must have argument 'expanse' or 'maya'! E.g.: './do_test_all.sh maya'. Try again!"
 exit
@@ -21,6 +21,7 @@ cp -vp $ROMS_ROOT/Examples/code_check/diag.opt .
 cp -vp $ROMS_ROOT/Examples/code_check/Makedefs.inc .
 cp -vp $ROMS_ROOT/Examples/Makefile .
 
+make compile_clean
 make #&> /dev/null
 
 
