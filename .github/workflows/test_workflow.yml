@@ -82,5 +82,5 @@ jobs:
         source $GITHUB_ENV
         conda activate roms-ci            	      
         cd ${ROMS_ROOT}/Examples/code_check/
-        ./do_test_all.sh github
+        ./do_test_all.sh laptop
       shell: bash
