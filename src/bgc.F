@@ -134,7 +134,6 @@
 #endif /* DAILYPAR_PHOTOINHIBITION */ 
 
       end subroutine set_bgc_surf_frc  !]
-
 ! ----------------------------------------------------------------------
       subroutine wrt_bgc_tracers(avg)  ![
       ! write variables to output netcdf file
@@ -251,7 +250,7 @@
 ! ----------------------------------------------------------------------
       subroutine wrt_bgc_diags ![
       implicit none
-
+#if defined (BEC2_DIAG) || defined (MARBL_DIAGS)
       ! local
       character(len=99),save :: fname_his,fname_avg
       integer                :: itrc, ierr, idiag
@@ -348,9 +347,9 @@
       endif
 
       ierr=nf90_close(ncid)
+#endif /* (BEC2_DIAG) || defined (MARBL_DIAGS) */
 
       end subroutine wrt_bgc_diags  !]
-
 !----------------------------------------------------------------------
       subroutine create_bgc_file(fname,avg)  ![
       implicit none
@@ -376,6 +375,7 @@
 
       end subroutine create_bgc_file !]
 !----------------------------------------------------------------------
+#if defined (BEC2_DIAG) || defined (MARBL_DIAGS)
       subroutine create_bgc_dia_file(fname,avg)  ![
       implicit none
 
@@ -399,7 +399,7 @@
       ierr = nf90_enddef(ncid)
 
       end subroutine create_bgc_dia_file !]
-
+#endif /* (BEC2_DIAG) || defined (MARBL_DIAGS) */
 ! ----------------------------------------------------------------------
       subroutine def_vars_bgc( ncid, avg )  ![
       ! define output variable & attributes in netcdf results file
@@ -437,7 +437,6 @@
       endif
 
       end subroutine def_vars_bgc  !]
-
 ! ----------------------------------------------------------------------
       subroutine calc_avg_bgc  ![
       implicit none
@@ -468,6 +467,7 @@
 
       end subroutine calc_avg_bgc  !]
 ! ----------------------------------------------------------------------
+#if defined (BEC2_DIAG) || defined (MARBL_DIAGS)
       subroutine calc_avg_dia_bgc  ![
       implicit none
 
@@ -498,7 +498,9 @@
       end do
 
       end subroutine calc_avg_dia_bgc  !]
+#endif /* (BEC2_DIAG) || defined (MARBL_DIAGS) */
 ! ----------------------------------------------------------------------
+#if defined (BEC2_DIAG) || defined (MARBL_DIAGS)
       subroutine def_bgc_diag(ncid,avg)  ![
 
       ! Define history/avg file variables for BEC2_DIAG
@@ -534,6 +536,7 @@
       enddo
 
       end subroutine def_bgc_diag  !]
+#endif /* (BEC2_DIAG) || defined (MARBL_DIAGS) */
 ! ----------------------------------------------------------------------
       subroutine init_arrays_bgc_frc  ![
       implicit none
